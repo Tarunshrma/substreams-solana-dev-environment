@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Debugging output
+echo "Arguments received: $1, $2"
+
 export NETWORK=${1}
 export SUBSTREAMS_ENDPOINT=${2}
 export SUBSTREAMS_API_TOKEN=${SUBSTREAMS_API_TOKEN}

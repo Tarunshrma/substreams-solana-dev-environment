@@ -5,6 +5,8 @@ set -e
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export CONFIG=${ROOT}/generated-config.toml
 
+echo "Config file: $CONFIG"
+
 clean=
 
 subgraph=$SUBGRAPH 
@@ -12,6 +14,7 @@ subgraph=$SUBGRAPH
 graph="node_modules/.bin/graph"
 
 main() {
+
   pushd "$ROOT" &> /dev/null
 
   while getopts "hc" opt; do
@@ -34,9 +37,9 @@ main() {
     rm  ${ROOT}/generated-config.toml 1> /dev/null
   fi
 
-  prepare
+  prepare $1 $2
 
-  exec docker-compose up 
+  exec docker compose up 
 }
 prepare() {
   if [[ ! -d "./data/ipfs" ]]; then
@@ -47,7 +50,11 @@ prepare() {
     mkdir -p ./data/postgres 1> /dev/null
   fi
   
-  ${ROOT}/substreams-config-gen.sh
+  echo "Preparing with subgraph: $subgraph, endpoint: $1"
+
+  #${ROOT}/substreams-config-gen.sh
+   # Pass all remaining arguments to the substreams-config-gen.sh script
+  ${ROOT}/substreams-config-gen.sh "$1" "$2"
 }
 
 usage_error() {

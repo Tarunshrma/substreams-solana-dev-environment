@@ -1,5 +1,44 @@
-version: "3"
 services:
+  solana-validator:
+    image: solana-test-validator:v1.18.15
+    ports:
+      - '1024:1024' # Gossip port
+      - '1027:1027' # TPU port
+      - '8899:8899' # JSON RPC port
+      - '8900:8900' # WebSocket PubSub port
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "-H", "Content-Type: application/json", "http://solana-validator:8899"]
+      interval: 5s
+      timeout: 10s
+      start_period: 15s
+      start_interval: 5s
+      retries: 10
+    command:
+    - solana-test-validator
+    - --ledger
+    - /data
+
+  firehose:
+    image: ghcr.io/streamingfast/firehose-solana:v1.0.3
+    depends_on:
+      solana-validator:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - '9000:9000' # Substreams tier 1 gRPC port
+    entrypoint:
+    - /app/firecore
+    command:
+    - start
+    - reader-node,merger,relayer,firehose,substreams-tier1,substreams-tier2
+    - --config-file=
+    - --log-format=text
+    - --log-to-file=false
+    - --common-first-streamable-block=1
+    - --reader-node-path=firesol
+    - --reader-node-arguments=fetch rpc http://solana-validator:8899 1 --state-dir=./firehose-data/reader/data
+    - --substreams-tier1-block-type=sf.solana.type.v1.Block
+    - --substreams-tier1-grpc-listen-addr=:9000
   graph-node:
     container_name: graph-node
     image: graphprotocol/graph-node:canary-substreams-index-module-e532c3135
@@ -12,11 +51,13 @@ services:
     depends_on:
       - ipfs
       - postgres
+      - solana-validator
+      - firehose
     extra_hosts:
       - host.docker.internal:host-gateway
     environment:
       GRAPH_NODE_CONFIG: /etc/graph-node/config.toml
-      SUBSTREAMS_ENDPOINT: $SUBSTREAMS_ENDPOINT
+      SUBSTREAMS_ENDPOINT: http://firehose:9000
       SUBSTREAMS_API_TOKEN: $SUBSTREAMS_API_TOKEN
       postgres_host: postgres
       postgres_user: graph-node
@@ -24,7 +65,7 @@ services:
       postgres_db: graph-node
       ipfs: 'ipfs:5001'
       ethereum: 'mainnet:http://host.docker.internal:8545'
-      GRAPH_LOG: info
+      GRAPH_LOG: debug
     volumes: 
       - $CONFIG:/etc/graph-node/config.toml
   ipfs:
@@ -70,4 +111,3 @@ services:
       - DATABASE_URL=postgres://graph-node:let-me-in@postgres:5432/graph-node?sslmode=disable
     depends_on:
       - postgres
-

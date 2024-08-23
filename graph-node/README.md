@@ -9,5 +9,7 @@ The entrypoint to set up the Graph Node local environment is the `start.sh` scri
 For example, the following command spins up a Graph Node for the `injective-mainnet` network using the `https://mainnet.injective.streamingfast.io:443` Substreams endpoint.
 
 ```bash
-./start.sh injective-mainnet https://mainnet.injective.streamingfast.io:443
+./start.sh solana-mainnet http://firehose:9000
 ```
+
+ 
